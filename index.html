@@ -1,0 +1,432 @@
+<!--
+Lifeblood Call Tracker
+Single-file web app ready for GitHub Pages
+
+How to use:
+1. Save this file as `index.html` in a new Git repository.
+2. Push to GitHub and enable GitHub Pages (main branch -> root).
+
+Features:
+- Dark / Light toggle (starts dark)
+- 10 appointment quick-buttons + custom + bulk add
+- No-appointment reason buttons (Other, Will book online, Deferred)
+- Not KPI (Short calls / Del Transfers)
+- Live pie chart for outcomes and donut KPI progress ring
+- Undo (single-step) and Reset (confirm) actions
+- KPI target editable and persistent
+- Auto-save to localStorage + Export CSV
+- Modern cyberpunk aesthetic using Tailwind + custom CSS
+
+Notes for maintainers/developers:
+- This is an intentionally self-contained single-file app for easy GitHub Pages hosting.
+- Dependencies loaded from CDN: Chart.js and Tailwind.
+- If you prefer a multi-file project (separate CSS/JS), split this file accordingly.
+-->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lifeblood Call Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg-dark:#071021; /* deep navy */
+      --panel:#0b1220;
+      --accent:#7c3aed; /* purple */
+      --accent-2:#06b6d4; /* cyan */
+      --glow: 0 6px 30px rgba(124,58,237,0.12);
+    }
+    [data-theme='light']{
+      --bg-dark:#f6f8fb;
+      --panel:#ffffff;
+      --accent:#6d28d9;
+      --accent-2:#0891b2;
+    }
+    body{background:linear-gradient(180deg,var(--bg-dark),#041029);font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial}
+    .cyber-font{font-family:Orbitron,Inter,monospace}
+    .panel{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border:1px solid rgba(255,255,255,0.04);box-shadow:var(--glow);backdrop-filter: blur(6px)}
+    .btn{transition:all .15s ease;}
+    .btn:active{transform:translateY(1px) scale(.998)}
+    .muted{opacity:.75}
+    /* small responsive tweaks */
+    @media (max-width:900px){.grid-main{grid-template-columns:1fr!important}.controls {grid-template-columns:1fr 1fr!important}}
+  </style>
+</head>
+<body data-theme="dark" class="text-slate-100 min-h-screen p-6">
+  <div class="max-w-6xl mx-auto">
+    <header class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl panel flex items-center justify-center cyber-font text-2xl font-bold text-white shadow-xl" style="background:linear-gradient(135deg,var(--accent),var(--accent-2))">LB</div>
+        <div>
+          <h1 class="text-2xl font-semibold cyber-font">Lifeblood Call Tracker</h1>
+          <p class="text-sm muted">Track call outcomes, appointments and KPI progress — single-screen tool</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <label class="flex items-center gap-2 text-sm muted">
+          <input id="darkToggle" type="checkbox" class="hidden" checked>
+          <button id="themeBtn" class="btn panel px-3 py-2 rounded-md">Dark</button>
+        </label>
+        <button id="exportBtn" class="btn panel px-3 py-2 rounded-md">Export CSV</button>
+        <button id="helpBtn" class="btn panel px-3 py-2 rounded-md">Help</button>
+      </div>
+    </header>
+
+    <main class="grid grid-cols-3 gap-6 grid-main">
+      <!-- Left column: Controls -->
+      <section class="col-span-1 panel p-5 rounded-xl">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold cyber-font">Controls</h2>
+          <div class="text-sm muted">Shift data saved locally</div>
+        </div>
+
+        <div class="mb-4">
+          <div class="text-sm font-semibold mb-2">Appointments</div>
+          <div class="grid grid-cols-5 gap-2 controls">
+            <!-- 10 buttons -->
+            <button class="btn px-3 py-2 rounded-md bg-gradient-to-br from-green-500 to-green-400 text-black" onclick="addAppointment(1)">+1</button>
+            <button class="btn px-3 py-2 rounded-md bg-gradient-to-br from-green-500 to-green-400 text-black" onclick="addAppointment(2)">+2</button>
+            <button class="btn px-3 py-2 rounded-md bg-gradient-to-br from-green-500 to-green-400 text-black" onclick="addAppointment(3)">+3</button>
+            <button class="btn px-3 py-2 rounded-md bg-gradient-to-br from-green-500 to-green-400 text-black" onclick="addAppointment(4)">+4</button>
+            <button class="btn px-3 py-2 rounded-md bg-gradient-to-br from-green-500 to-green-400 text-black" onclick="addAppointment(5)">+5</button>
+            <button class="btn px-3 py-2 rounded-md bg-gradient-to-br from-green-500 to-green-400 text-black" onclick="addAppointment(6)">+6</button>
+            <button class="btn px-3 py-2 rounded-md bg-gradient-to-br from-green-500 to-green-400 text-black" onclick="addAppointment(7)">+7</button>
+            <button class="btn px-3 py-2 rounded-md bg-gradient-to-br from-green-500 to-green-400 text-black" onclick="addAppointment(8)">+8</button>
+            <button class="btn px-3 py-2 rounded-md bg-gradient-to-br from-green-500 to-green-400 text-black" onclick="addAppointment(9)">+9</button>
+            <button class="btn px-3 py-2 rounded-md bg-gradient-to-br from-green-500 to-green-400 text-black" onclick="addAppointment(10)">+10</button>
+          </div>
+          <div class="flex gap-2 mt-3">
+            <input id="customAppt" type="number" min="1" placeholder="Custom" class="w-24 px-3 py-2 rounded-md text-black" />
+            <button class="btn panel px-3 py-2 rounded-md" onclick="addCustomAppt()">Add</button>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <div class="text-sm font-semibold mb-2">No appointment (reasons)</div>
+          <div class="flex flex-col gap-2">
+            <button class="btn px-3 py-2 rounded-md bg-red-600 text-white" onclick="recordNoAppt('other')">No appointment - Other</button>
+            <button class="btn px-3 py-2 rounded-md bg-red-500 text-white" onclick="recordNoAppt('online')">No appointment - Donor will book online</button>
+            <button class="btn px-3 py-2 rounded-md bg-red-400 text-black" onclick="recordNoAppt('deferred')">No appointment - Donor deferred</button>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <div class="text-sm font-semibold mb-2">Not KPI</div>
+          <button class="btn px-3 py-2 rounded-md bg-yellow-400 text-black" onclick="recordNoKPI()">Short calls / Del Transfers (Not KPI)</button>
+        </div>
+
+        <div class="flex gap-2 mt-4">
+          <button id="undoBtn" class="btn panel px-3 py-2 rounded-md">Undo</button>
+          <button id="resetBtn" class="btn panel px-3 py-2 rounded-md">Reset</button>
+          <button id="exportShiftBtn" class="btn panel px-3 py-2 rounded-md">Export Shift</button>
+        </div>
+      </section>
+
+      <!-- Middle column: Stats & KPI -->
+      <section class="col-span-1 panel p-5 rounded-xl flex flex-col gap-4">
+        <div class="flex items-start justify-between">
+          <div>
+            <h3 class="text-lg font-semibold cyber-font">Live Stats</h3>
+            <p class="muted text-sm">Updated as you record calls</p>
+          </div>
+          <div class="text-sm muted">KPI target</div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="panel p-3 rounded-lg">
+            <div class="text-xs muted">Appointments</div>
+            <div id="appointmentsCount" class="text-2xl font-bold cyber-font">0</div>
+          </div>
+          <div class="panel p-3 rounded-lg">
+            <div class="text-xs muted">No Appt</div>
+            <div id="noApptCount" class="text-2xl font-bold cyber-font">0</div>
+          </div>
+          <div class="panel p-3 rounded-lg">
+            <div class="text-xs muted">Not KPI</div>
+            <div id="notKpiCount" class="text-2xl font-bold cyber-font">0</div>
+          </div>
+          <div class="panel p-3 rounded-lg">
+            <div class="text-xs muted">Total Calls</div>
+            <div id="totalCalls" class="text-2xl font-bold cyber-font">0</div>
+          </div>
+        </div>
+
+        <div class="panel p-3 rounded-lg flex items-center gap-4">
+          <div style="width:120px;height:120px;">
+            <canvas id="kpiChart" width="120" height="120"></canvas>
+          </div>
+          <div>
+            <div class="text-sm muted">KPI progress (eligible calls)</div>
+            <div id="kpiPercent" class="text-3xl font-bold cyber-font">0%</div>
+            <div class="mt-2 flex items-center gap-2">
+              <input id="kpiTarget" type="number" min="0" max="100" value="45" class="w-20 px-2 py-1 rounded-md text-black" />
+              <button id="saveKpi" class="btn panel px-3 py-2 rounded-md">Save</button>
+            </div>
+            <div id="kpiMessage" class="mt-2 text-sm muted"></div>
+          </div>
+        </div>
+
+        <div class="panel p-3 rounded-lg">
+          <div class="text-sm muted mb-2">Recent Actions</div>
+          <ul id="historyList" class="text-sm list-disc pl-5 max-h-36 overflow-auto muted"></ul>
+        </div>
+
+      </section>
+
+      <!-- Right column: Charts -->
+      <section class="col-span-1 panel p-5 rounded-xl">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold cyber-font">Charts</h2>
+          <div class="text-sm muted">Distribution & KPI</div>
+        </div>
+        <div class="mb-6">
+          <canvas id="mainChart" width="400" height="240"></canvas>
+        </div>
+        <div class="text-sm muted">Tips: Use Undo to revert last action. Export CSV to attach to reports.</div>
+      </section>
+    </main>
+
+    <footer class="mt-6 text-sm muted">Built for Red Cross Lifeblood — Single-screen tracker • Save locally • Share via GitHub Pages</footer>
+  </div>
+
+<script>
+// --- Data model & persistence ---
+const STORAGE_KEY = 'lifeblood.call.tracker.v1';
+let state = {
+  appointments:0,
+  noAppt:{other:0,online:0,deferred:0},
+  notKpi:0,
+  calls:0,
+  target:45,
+  history:[] // history entries for undo: {type:'appt'|'noAppt'|'notKpi', value: n, label: '...'}
+};
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      Object.assign(state, parsed);
+    }
+  }catch(e){console.error('Failed to load state',e)}
+}
+function saveState(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+// --- Charts ---
+let mainChart, kpiChart;
+function initCharts(){
+  const mainCtx = document.getElementById('mainChart').getContext('2d');
+  mainChart = new Chart(mainCtx, {
+    type:'pie',
+    data:{
+      labels:['Appointments','No Appointment','Not KPI'],
+      datasets:[{data:[0,0,0],
+        backgroundColor:[getCssVar('--accent-2')||'#06b6d4','#ef4444','#eab308']
+      }]
+    },
+    options:{plugins:{legend:{position:'bottom'}},maintainAspectRatio:false}
+  });
+
+  const kpiCtx = document.getElementById('kpiChart').getContext('2d');
+  kpiChart = new Chart(kpiCtx, {
+    type:'doughnut',
+    data:{labels:['Completed','Remaining'],datasets:[{data:[0,100],backgroundColor:[getCssVar('--accent')||'#7c3aed','rgba(255,255,255,0.06)'],borderWidth:0}]},
+    options:{cutout:'75%',plugins:{legend:{display:false},tooltip:{enabled:false}}}
+  });
+}
+
+function getCssVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+// --- UI updates ---
+function updateUI(){
+  const appts = state.appointments;
+  const noApptTotal = state.noAppt.other + state.noAppt.online + state.noAppt.deferred;
+  const notKpi = state.notKpi;
+  const total = state.calls;
+  document.getElementById('appointmentsCount').textContent = appts;
+  document.getElementById('noApptCount').textContent = noApptTotal;
+  document.getElementById('notKpiCount').textContent = notKpi;
+  document.getElementById('totalCalls').textContent = total;
+
+  // KPI percent
+  const eligible = Math.max(0, total - notKpi);
+  const pct = eligible>0 ? Math.round((appts/eligible)*100) : 0;
+  document.getElementById('kpiPercent').textContent = pct + '%';
+  document.getElementById('kpiTarget').value = state.target;
+  document.getElementById('kpiMessage').textContent = pct >= state.target ? '✅ On or above target' : '🔴 Below target';
+  document.getElementById('kpiMessage').style.color = pct >= state.target ? '#86efac' : '#fb7185';
+
+  // Charts
+  mainChart.data.datasets[0].data = [appts, noApptTotal, notKpi];
+  mainChart.update();
+
+  const done = Math.min(100, (eligible>0?Math.round((appts/eligible)*100):0));
+  kpiChart.data.datasets[0].data = [done, Math.max(0,100-done)];
+  kpiChart.update();
+
+  // History list
+  const hist = document.getElementById('historyList');
+  hist.innerHTML = '';
+  const entries = state.history.slice().reverse();
+  for(const h of entries.slice(0,50)){
+    const li = document.createElement('li');
+    li.textContent = h.label;
+    hist.appendChild(li);
+  }
+
+  saveState();
+}
+
+// --- Actions ---
+function pushHistory(entry){
+  state.history.push(entry);
+  if(state.history.length>500) state.history.shift();
+}
+
+function addAppointment(n){
+  n = Number(n)||1;
+  state.appointments += n;
+  state.calls += 1; // each call counts as 1 call even if multiple appts recorded
+  pushHistory({type:'appt',value:n,label:`+${n} appointment(s)`});
+  updateUI();
+}
+
+function addCustomAppt(){
+  const val = Number(document.getElementById('customAppt').value)||0;
+  if(val<=0){alert('Enter a positive number');return}
+  addAppointment(val);
+}
+
+function recordNoAppt(reason){
+  if(!['other','online','deferred'].includes(reason)) return;
+  state.noAppt[reason] += 1;
+  state.calls += 1;
+  pushHistory({type:'noAppt',value:1,reason,label:`No appt - ${reason}`});
+  updateUI();
+}
+
+function recordNoKPI(){
+  state.notKpi += 1;
+  state.calls += 1;
+  pushHistory({type:'notKpi',value:1,label:'Not KPI - Short call/Del Transfer'});
+  updateUI();
+}
+
+function undo(){
+  const last = state.history.pop();
+  if(!last){alert('Nothing to undo');return}
+  // revert
+  if(last.type === 'appt'){
+    state.appointments = Math.max(0, state.appointments - (Number(last.value)||1));
+    state.calls = Math.max(0, state.calls - 1);
+  } else if(last.type === 'noAppt'){
+    const r = last.reason || 'other';
+    state.noAppt[r] = Math.max(0, state.noAppt[r]-1);
+    state.calls = Math.max(0, state.calls - 1);
+  } else if(last.type === 'notKpi'){
+    state.notKpi = Math.max(0, state.notKpi - 1);
+    state.calls = Math.max(0, state.calls - 1);
+  }
+  updateUI();
+}
+
+function resetAll(){
+  if(!confirm('Reset all shift data and settings to default? This cannot be undone.')) return;
+  // Remove saved state from localStorage to ensure a full reset
+  try{ localStorage.removeItem(STORAGE_KEY); }catch(e){console.warn('Could not clear localStorage',e)}
+
+  // Reset in-memory state to defaults (KPI target reset to default 45)
+  state = {
+    appointments:0,
+    noAppt:{other:0,online:0,deferred:0},
+    notKpi:0,
+    calls:0,
+    target:45,
+    history:[]
+  };
+
+  // Reset UI elements (theme, inputs)
+  try{
+    document.body.setAttribute('data-theme','dark');
+    if(window.themeBtn) themeBtn.textContent = 'Dark';
+    const kpiTargetEl = document.getElementById('kpiTarget');
+    if(kpiTargetEl) kpiTargetEl.value = state.target;
+    const customApptEl = document.getElementById('customAppt');
+    if(customApptEl) customApptEl.value = '';
+  }catch(e){console.warn('UI reset partial failure',e)}
+
+  updateUI();
+  alert('App has been reset to defaults.');
+}
+
+// --- Export / Import ---
+function exportCSV(){
+  const rows = [];
+  rows.push(['Metric','Value']);
+  rows.push(['Appointments',state.appointments]);
+  rows.push(['NoAppt - Other',state.noAppt.other]);
+  rows.push(['NoAppt - Online',state.noAppt.online]);
+  rows.push(['NoAppt - Deferred',state.noAppt.deferred]);
+  rows.push(['NotKPI',state.notKpi]);
+  rows.push(['Total Calls',state.calls]);
+  rows.push(['KPI Target',state.target]);
+  const csv = rows.map(r => r.map(cell => '"'+String(cell).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `lifeblood-shift-${new Date().toISOString().slice(0,19)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
+function exportShift(){
+  // export the raw state as JSON
+  const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `lifeblood-shift-${new Date().toISOString().slice(0,19)}.json`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
+// --- Handlers & wire-up ---
+document.getElementById('undoBtn').addEventListener('click',undo);
+document.getElementById('resetBtn').addEventListener('click',resetAll);
+document.getElementById('exportBtn').addEventListener('click',exportCSV);
+document.getElementById('exportShiftBtn').addEventListener('click',exportShift);
+
+// theme toggle
+const themeBtn = document.getElementById('themeBtn');
+themeBtn.addEventListener('click',()=>{
+  const root = document.body;
+  const isDark = document.body.getAttribute('data-theme') === 'dark';
+  document.body.setAttribute('data-theme', isDark? 'light':'dark');
+  themeBtn.textContent = isDark? 'Light':'Dark';
+});
+
+// KPI save
+document.getElementById('saveKpi').addEventListener('click',()=>{
+  const v = Number(document.getElementById('kpiTarget').value)||0;
+  state.target = v;
+  pushHistory({type:'kpi',value:v,label:`Set KPI target ${v}%`});
+  updateUI();
+});
+
+// help
+document.getElementById('helpBtn').addEventListener('click',()=>{
+  alert('Quick tips:\n- Use + buttons to add appointments (each call counted once)\n- Use "Not KPI" for short calls that DO NOT count towards KPI\n- Undo will revert the last recorded call\n- Reset clears the shift\n- Export CSV to attach to reports or copy to Excel')
+});
+
+// init
+loadState();
+initCharts();
+updateUI();
+
+</script>
+</body>
+</html>
